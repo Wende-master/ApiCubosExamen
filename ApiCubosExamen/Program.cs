@@ -4,6 +4,8 @@ using ApiCubosExamen.Data;
 using Microsoft.EntityFrameworkCore;
 using ApiCubosExamen.Helpers;
 using ApiCubosExamen.Repositories;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Azure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +20,25 @@ builder.Services.AddAuthentication(helper.GetAuthenticateSchema())
 
 builder.Services.AddTransient<RepositoryCubos>();
 
-string connectionString =
-    builder.Configuration.GetConnectionString("SqlAzure");
+
+// Add services to the container.
+builder.Services.AddAzureClients(factory =>
+{
+    factory.AddSecretClient
+    (builder.Configuration.GetSection("KeyVault"));
+});
+
+//DEBEMOS PODER RECUPERAR UN OBJETO INYECTADO EN CLASES 
+//QUE NO TIENEN CONSTRUCTOR
+SecretClient secretClient =
+builder.Services.BuildServiceProvider().GetService<SecretClient>();
+KeyVaultSecret secret =
+    await secretClient.GetSecretAsync("Keyconnection");
+string connectionString = secret.Value;
+
+//string connectionString =
+//    builder.Configuration.GetConnectionString("SqlAzure");
+
 builder.Services.AddDbContext<CubosContext>(options =>
 {
     options.UseSqlServer(connectionString);

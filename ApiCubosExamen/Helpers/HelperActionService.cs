@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
@@ -14,9 +16,30 @@ namespace ApiCubosExamen.Helpers
 
         public HelperActionService(IConfiguration configuration)
         {
-            this.Issuer = configuration.GetValue<string>("ApiOAuth:Issuer");
-            this.Audience = configuration.GetValue<string>("ApiOAuth:Audience");
-            this.SecretKey = configuration.GetValue<string>("ApiOAuth:SecretKey");
+            //this.Issuer = configuration.GetValue<string>("ApiOAuth:Issuer");
+            //this.Audience = configuration.GetValue<string>("ApiOAuth:Audience");
+            //this.SecretKey = configuration.GetValue<string>("ApiOAuth:SecretKey");
+
+            var keyVaultUri = configuration.GetValue<string>("ApiOAuth:keys");
+            var secretClient = new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
+
+
+            Issuer = GetSecretValue(secretClient, "Issuer");
+            Audience = GetSecretValue(secretClient, "Audience");
+            SecretKey = GetSecretValue(secretClient, "SecretKey");
+        }
+
+        private string GetSecretValue(SecretClient secretClient, string secretName)
+        {
+            try
+            {
+                KeyVaultSecret secret = secretClient.GetSecret(secretName);
+                return secret.Value;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
 
         public SymmetricSecurityKey GetKeyToken()
